@@ -4,7 +4,7 @@ import re
 import os
 import csv
 
-path_to_file_dir = "/home/ashok/project/thesis/ukp/parser"
+path_to_file_dir = "/home/ashok/project/thesis/ukp/parser/"
 
 
 def open_csv():
@@ -58,6 +58,39 @@ def match_pattern3(c,w):
                      'Correct': re.sub(clean, '', sub_pattern.group(3)), \
                      'Suggestion': re.sub(clean, '', sub_pattern.group(2))})
 
+# matches verb mistakes
+def match_pattern4(c, w):
+    check_title_and_get_suggestion = re.search('<h1>verb mistakes.*?</h1>.*?<p>(.*?)</p>', c)
+    if check_title_and_get_suggestion is not None:
+        pattern = re.findall('<p>INCORRECT.*?:.*CORRECT.*?:.*?.</p>', c, re.DOTALL)
+        if pattern is not None:
+            for p in pattern:
+                sub_pattern = re.match('<p>INCORRECT.*?:(.*?)CORRECT.*?:(.*?)</p>', p, re.DOTALL)
+                clean = re.compile('<.*?>')
+                if sub_pattern is not None:
+                    w.writerow(
+                        {'Incorrect': re.sub(clean, '', sub_pattern.group(1)), \
+                         'Correct': re.sub(clean, '', sub_pattern.group(2)), \
+                         'Suggestion': re.sub(clean, '', check_title_and_get_suggestion)})
+
+
+
+
+# matches verb mistakes
+def match_pattern5(c, w):
+    check_title_and_get_suggestion = re.search('<h1>verb mistakes.*?</h1>.*?<p>(.*?)</p>', c)
+    if check_title_and_get_suggestion is not None:
+        pattern = re.findall('<p><strong>Incorrect.*?:.*?</strong>.*?<strong>Correct.*:.*?</strong>.*?</p>', c, re.DOTALL)
+        if pattern is not None:
+            for p in pattern:
+                sub_pattern = re.match('<p><strong>Incorrect.*?:.*?</strong>(.*?)<strong>Correct.*:.*?</strong>(.*?)</p>', p, re.DOTALL)
+                clean = re.compile('<.*?>')
+                if sub_pattern is not None:
+                    w.writerow(
+                        {'Incorrect': re.sub(clean, '', sub_pattern.group(1)), \
+                         'Correct': re.sub(clean, '', sub_pattern.group(2)), \
+                         'Suggestion': re.sub(clean, '', check_title_and_get_suggestion)})
+
 
 def main():
     # get files from the directory
@@ -67,7 +100,7 @@ def main():
         file_list = [file for file in file_list if file.endswith('.html')]
 
         writer = open_csv()
-
+        pattern_list = []
         # loop through the files in file list and match the pattern
         if file_list is not None:
             for file in file_list:
@@ -78,6 +111,8 @@ def main():
                 match_pattern1(content, writer)
                 match_pattern2(content, writer)
                 match_pattern3(content, writer)
+                match_pattern4(content, writer)
+                match_pattern5(content, writer)
 
 
 if __name__ == "__main__":
