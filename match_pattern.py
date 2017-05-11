@@ -15,6 +15,7 @@ def open_csv():
     return writer
 
 
+# matches general mistakes
 def match_pattern1(c,w):
     pattern = re.findall('<p><strong>[0-9].*?</strong></p>.*?<p>.*?:.*?</p>', c, re.DOTALL)
     if pattern is not None:
@@ -22,13 +23,16 @@ def match_pattern1(c,w):
             # sel = Selector(text=p, type="html")
             # print(sel.xpath('//p//text()').extract_first())
             sub_pattern = re.match('<p><strong>[0-9].(.*?)</strong></p>.*?<p>(.*?): (.*?)</p>', p, re.DOTALL)
-            clean = re.compile('<.*?>')
 
             if sub_pattern is not None:
+                clean = re.compile('<.*>')
+                # suggestion = re.sub(clean, '', sub_pattern.group(2))
+
                 w.writerow(
                     {'Incorrect': re.sub(clean, '', sub_pattern.group(1)), \
                      'Correct': re.sub(clean, '', sub_pattern.group(3)), \
                      'Suggestion': re.sub(clean, '', sub_pattern.group(2))})
+
 
 def match_pattern2(c,w):
     pattern = re.findall('<p>incorrect:.*?correct:.*?</p>.*?<p>.*?</p>', c, re.DOTALL | re.IGNORECASE)
@@ -58,9 +62,10 @@ def match_pattern3(c,w):
                      'Correct': re.sub(clean, '', sub_pattern.group(3)), \
                      'Suggestion': re.sub(clean, '', sub_pattern.group(2))})
 
+
 # matches verb mistakes
 def match_pattern4(c, w):
-    check_title_and_get_suggestion = re.search('<h1>verb mistakes.*?</h1>.*?<p>(.*?)</p>', c)
+    check_title_and_get_suggestion = re.search('<h1>verb\s+mistakes.*?</h1>.*?<p>(.*?)</p>', c)
     if check_title_and_get_suggestion is not None:
         pattern = re.findall('<p>INCORRECT.*?:.*CORRECT.*?:.*?.</p>', c, re.DOTALL)
         if pattern is not None:
@@ -74,11 +79,9 @@ def match_pattern4(c, w):
                          'Suggestion': re.sub(clean, '', check_title_and_get_suggestion)})
 
 
-
-
 # matches verb mistakes
 def match_pattern5(c, w):
-    check_title_and_get_suggestion = re.search('<h1>verb mistakes.*?</h1>.*?<p>(.*?)</p>', c)
+    check_title_and_get_suggestion = re.search('<h1>verb\s+mistakes.*?</h1>.*?<p>(.*?)</p>', c, re.IGNORECASE)
     if check_title_and_get_suggestion is not None:
         pattern = re.findall('<p><strong>Incorrect.*?:.*?</strong>.*?<strong>Correct.*:.*?</strong>.*?</p>', c, re.DOTALL)
         if pattern is not None:
@@ -91,6 +94,33 @@ def match_pattern5(c, w):
                          'Correct': re.sub(clean, '', sub_pattern.group(2)), \
                          'Suggestion': re.sub(clean, '', check_title_and_get_suggestion)})
 
+# match content with answers at the end
+def match_pattern6(c,w):
+
+    pattern1 = re.findall('<p><strong>\d.*?</strong>.*?[a]\).*?[b]\).*?</p>', c,
+                          re.DOTALL | re.IGNORECASE | re.MULTILINE)
+    pattern2 = re.findall('<p>\d.*?<strong>[a-z]\).*?</strong></p>.*?<p>.*?</p>', c, re.DOTALL|re.IGNORECASE|re.MULTILINE)
+
+    if pattern1 and pattern2:
+        for p1,p2 in zip(pattern1,pattern2):
+            sub_pattern1 = re.match('<p><strong>\d.*?</strong>.*?[a]\)(.*?)[b]\)(.*?)</p>',
+                                   p1, re.DOTALL|re.IGNORECASE|re.MULTILINE)
+
+            sub_pattern2 = re.match('<p>\d.*?<strong>[a-z]\)(.*?)</strong></p>.*?<p>(.*?)</p>',
+                                    p2, re.DOTALL|re.IGNORECASE|re.MULTILINE)
+
+            if sub_pattern2.group(1) != sub_pattern1.group(1):
+                incorrect = sub_pattern1.group(1)
+            elif sub_pattern2.group(1) != sub_pattern1.group(2):
+                incorrect = sub_pattern1.group(2)
+
+            clean = re.compile('<.*?>')
+
+            w.writerow(
+                {'Incorrect': re.sub(clean, '', incorrect), \
+                 'Correct': re.sub(clean, '', sub_pattern2.group(1)), \
+                 'Suggestion': re.sub(clean, '', sub_pattern2.group(2))})
+
 
 def main():
     # get files from the directory
@@ -100,19 +130,27 @@ def main():
         file_list = [file for file in file_list if file.endswith('.html')]
 
         writer = open_csv()
-        pattern_list = []
+
+        # pattern_list = []
+
         # loop through the files in file list and match the pattern
         if file_list is not None:
             for file in file_list:
                 path_to_file = os.path.join(path_to_file_dir+file)
                 html_file = open(path_to_file, 'r')
+                #print(html_file)
                 content = html_file.read()
                 html_file.close()
-                match_pattern1(content, writer)
+                if re.search('<h2>Answers\s+and\s+Explanations.*?</h2>', content, re.DOTALL | re.IGNORECASE):
+                    match_pattern6(content, writer)
+                else:
+                    match_pattern1(content, writer)
                 match_pattern2(content, writer)
                 match_pattern3(content, writer)
                 match_pattern4(content, writer)
                 match_pattern5(content, writer)
+    else:
+        print('Path does not exist. Please correct the path.')
 
 
 if __name__ == "__main__":
