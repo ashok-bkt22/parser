@@ -1,5 +1,5 @@
-parser/data/
-base/
+data/*.html
+.htmlbase/
 .project
 .pydevproject
 .settings/
