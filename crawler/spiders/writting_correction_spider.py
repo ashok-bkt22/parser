@@ -45,7 +45,7 @@ class WrittingTipSpider(scrapy.Spider):
 
     def save_article(self, response):
         page = response.url.split("/")[-2]
-        filename = '%s.html' % page
+        filename = 'data/%s.html' %  (page)
 
         content = response.css('article.post').extract()
         if content is not None:

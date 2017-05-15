@@ -4,9 +4,6 @@ import re
 import os
 import csv
 
-path_to_file_dir = "/home/ashok/project/thesis/ukp/parser/"
-
-
 def open_csv():
     csv_file = open('text.csv','w')
     fieldnames = ['Incorrect', 'Correct', 'Suggestion']
@@ -25,7 +22,7 @@ def match_pattern1(c,w):
             sub_pattern = re.match('<p><strong>[0-9].(.*?)</strong></p>.*?<p>(.*?): (.*?)</p>', p, re.DOTALL)
 
             if sub_pattern is not None:
-                clean = re.compile('<.*>')
+                clean = re.compile('<.*>|\n+')
                 # suggestion = re.sub(clean, '', sub_pattern.group(2))
 
                 w.writerow(
@@ -39,7 +36,7 @@ def match_pattern2(c,w):
     if pattern is not None:
         for p in pattern:
             sub_pattern = re.match('<p>incorrect:(.*?)correct:(.*?)</p>.*?<p>(.*?)</p>', p, re.DOTALL | re.IGNORECASE)
-            clean = re.compile('<.*?>')
+            clean = re.compile('<.*>|\n+')
             if sub_pattern is not None:
                 w.writerow(
                     {'Incorrect': re.sub(clean, '', sub_pattern.group(1)), \
@@ -55,7 +52,7 @@ def match_pattern3(c,w):
         for p in pattern:
             sub_pattern = re.match('<p>.*?<strong>original.*?:</strong>(.*?)<strong>correct.*?:</strong>(.*?)</p>.*?<p>(.*?)</p>',\
                                    p, re.DOTALL | re.IGNORECASE)
-            clean = re.compile('<.*?>')
+            clean = re.compile('<.*?>|\n+')
             if sub_pattern is not None:
                 w.writerow(
                     {'Incorrect': re.sub(clean, '', sub_pattern.group(1)), \
@@ -71,7 +68,7 @@ def match_pattern4(c, w):
         if pattern is not None:
             for p in pattern:
                 sub_pattern = re.match('<p>INCORRECT.*?:(.*?)CORRECT.*?:(.*?)</p>', p, re.DOTALL)
-                clean = re.compile('<.*?>')
+                clean = re.compile('<.*?>|\n+')
                 if sub_pattern is not None:
                     w.writerow(
                         {'Incorrect': re.sub(clean, '', sub_pattern.group(1)), \
@@ -87,7 +84,7 @@ def match_pattern5(c, w):
         if pattern is not None:
             for p in pattern:
                 sub_pattern = re.match('<p><strong>Incorrect.*?:.*?</strong>(.*?)<strong>Correct.*:.*?</strong>(.*?)</p>', p, re.DOTALL)
-                clean = re.compile('<.*?>')
+                clean = re.compile('<.*?>|\n+')
                 if sub_pattern is not None:
                     w.writerow(
                         {'Incorrect': re.sub(clean, '', sub_pattern.group(1)), \
@@ -114,20 +111,19 @@ def match_pattern6(c,w):
             elif sub_pattern2.group(1) != sub_pattern1.group(2):
                 incorrect = sub_pattern1.group(2)
 
-            clean = re.compile('<.*?>')
-
+            clean = re.compile('<.*?>|\n+')
             w.writerow(
                 {'Incorrect': re.sub(clean, '', incorrect), \
                  'Correct': re.sub(clean, '', sub_pattern2.group(1)), \
                  'Suggestion': re.sub(clean, '', sub_pattern2.group(2))})
 
 
-def main():
+def main(path_to_file_dir):
     # get files from the directory
     if os.path.exists(path_to_file_dir):
         file_list = sorted(os.listdir(path_to_file_dir))
         # get a list of files ending in 'html'
-        file_list = [file for file in file_list if file.endswith('.html')]
+        file_list = [file_name for file_name in file_list if file_name.endswith('.html')]
 
         writer = open_csv()
 
@@ -135,12 +131,13 @@ def main():
 
         # loop through the files in file list and match the pattern
         if file_list is not None:
-            for file in file_list:
-                path_to_file = os.path.join(path_to_file_dir+file)
+            for file_name in file_list:
+                path_to_file = os.path.join(path_to_file_dir, file_name)
                 html_file = open(path_to_file, 'r')
-                #print(html_file)
+                print path_to_file
                 content = html_file.read()
                 html_file.close()
+                print content
                 if re.search('<h2>Answers\s+and\s+Explanations.*?</h2>', content, re.DOTALL | re.IGNORECASE):
                     match_pattern6(content, writer)
                 else:
@@ -154,7 +151,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-
-
+    cwd = os.getcwd()
+    path_to_file_dir = "%s/data/" % (cwd)
+    main(path_to_file_dir)
 
