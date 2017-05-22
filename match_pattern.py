@@ -5,12 +5,41 @@ import os
 import csv
 import json
 
+
 def open_csv():
     csv_file = open('text.csv','w')
-    fieldnames = ['Url', 'Incorrect', 'Correct', 'Suggestion']
+    fieldnames = ['Url', 'Incorrect', 'Correct', 'Suggestion', 'Label', 'Matched Pattern']
     writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
     writer.writeheader()
     return writer
+
+
+def label_error_type(c):
+    label_list = ['<h1>(.*?)quiz\s#[0-9]{0,4}:\s(.*?)</h1>',
+                  '<h1>(.*?)mistakes\s#[0-9]{0,4}:\s(.*?)</h1>',
+                  '<h1>[0-9]{0,2}(\s)types\sof(.*?)</h1>',
+                  '<h1>[0-9]{0,2}(\s)cases\sof(.*?)</h1>',
+                  '<h1>[0-9]{0,2}(\s)examples\sof(.*?)</h1>',
+                  '<h1>[0-9]{0,2}(\s)problems\swith(.*?)</h1>',
+                  '<h1>[0-9]{0,2}(\s)errors\sin(.*?)</h1>'
+                  ]
+
+    for label in label_list:
+        label_group = re.search(label, c, re.IGNORECASE)
+        if label_group is not None:
+            if label_group.group(1) is not None:
+                return label_group.group(1) + '-' + label_group.group(2)
+
+            return label_group.group(2)
+
+    # re.search('<h1>(.*?)quiz\s#[0-9]{0,4}:\s(.*?)</h1>', c, re.IGNORECASE)
+    # re.search('<h1>(.*?)mistakes\s#[0-9]{0,4}:\s(.*?)</h1>', c, re.IGNORECASE)
+    # re.search('<h1>[0-9]{0,2}\stypes\sof(.*?)</h1>', c, re.IGNORECASE)
+    # re.search('<h1>[0-9]{0,2}\scases\sof(.*?)</h1>', c, re.IGNORECASE)
+    # re.search('<h1>[0-9]{0,2}\sexamples\sof(.*?)</h1>', c, re.IGNORECASE)
+    # re.search('<h1>[0-9]{0,2}\sproblems\swith(.*?)</h1>', c, re.IGNORECASE)
+    # re.search('<h1>[0-9]{0,2}\serrors\sin(.*?)</h1>', c, re.IGNORECASE)
+    # pass
 
 
 # matches general mistakes, consisting incorrect sentence in bold text
@@ -20,33 +49,38 @@ def match_pattern1(url,c,w):
     pattern = re.findall('<p><strong>[0-9].*?</strong></p>.*?<p>.*?:.*?</p>', c, re.DOTALL)
 
     if len(pattern):
+        label = label_error_type(c) or None
         for p in pattern:
             sub_pattern = re.match('<p><strong>[0-9].(.*?)</strong></p>.*?<p>(.*?): (.*?)</p>', p, re.DOTALL)
             if sub_pattern is not None:
                 clean = re.compile('<.*>|\n+')
-                sub_pattern.group(3)
                 w.writerow({'Url': url,
                             'Incorrect': re.sub(clean, '', sub_pattern.group(1)),
                             'Correct': re.sub(clean, '', sub_pattern.group(3)),
-                            'Suggestion': re.sub(clean, '', sub_pattern.group(2))
+                            'Suggestion': re.sub(clean, '', sub_pattern.group(2)),
+                            'Label' : label,
+                            'Matched Pattern' : 'pattern 1'
                             })
+
         return True
 
     return False
 
 
-
 def match_pattern2(url,c,w):
-    pattern = re.findall('<p>incorrect:.*?correct:.*?</p>.*?<p>.*?</p>', c, re.DOTALL | re.IGNORECASE)
+    pattern = re.findall('<p>.*?<strong>Incorrect.*?:</strong>.*?<strong>Correct.*?:</strong>.*?<p>.*?</p>', c, re.DOTALL)
     if len(pattern):
+        label = label_error_type(c)
         for p in pattern:
-            sub_pattern = re.match('<p>incorrect:(.*?)correct:(.*?)</p>.*?<p>(.*?)</p>', p, re.DOTALL | re.IGNORECASE)
+            sub_pattern = re.match('<p>.*?<strong>Incorrect.*?:</strong>(.*?)<strong>Correct.*?:</strong>(.*?)<p>(.*?)</p>', p, re.DOTALL)
             clean = re.compile('<.*>|\n+')
             if sub_pattern is not None:
                 w.writerow({'Url': url,
                             'Incorrect': re.sub(clean, '', sub_pattern.group(1)),
-                            'Correct': re.sub(clean, '', sub_pattern.group(3)),
-                            'Suggestion': re.sub(clean, '', sub_pattern.group(2))
+                            'Correct': re.sub(clean, '', sub_pattern.group(2)),
+                            'Suggestion': re.sub(clean, '', sub_pattern.group(3)),
+                            'Label' : label,
+                            'Matched Pattern' : 'pattern 2'
                             })
         return True
 
@@ -59,6 +93,7 @@ def match_pattern3(url,c,w):
 
 
     if len(pattern):
+        label = label_error_type(c)
         for p in pattern:
             sub_pattern = re.match(
                         '<p>.*?<strong>original.*?:</strong>(.*?)<strong>correct.*?:</strong>(.*?)</p>.*?<p>(.*?)</p>',
@@ -67,8 +102,10 @@ def match_pattern3(url,c,w):
             if sub_pattern is not None:
                 w.writerow({'Url': url,
                             'Incorrect': re.sub(clean, '', sub_pattern.group(1)),
-                            'Correct': re.sub(clean, '', sub_pattern.group(3)),
-                            'Suggestion': re.sub(clean, '', sub_pattern.group(2))
+                            'Correct': re.sub(clean, '', sub_pattern.group(2)),
+                            'Suggestion': re.sub(clean, '', sub_pattern.group(3)),
+                            'Label' : label,
+                            'Matched Pattern' : 'pattern 3'
                             })
         return True
 
@@ -76,13 +113,16 @@ def match_pattern3(url,c,w):
 
 # matches verb mistakes
 def match_pattern4(url,c, w):
-    check_title_and_get_suggestion = re.search('<h1>verb\s+mistakes.*?</h1>.*?<p>(.*?)</p>', c)
+    check_title_and_get_suggestion = re.search('<h1>verb\s+mistakes.*?</h1>.*?<p>(.*?)</p>', c, re.IGNORECASE)
+    #print(check_title_and_get_suggestion)
     if check_title_and_get_suggestion is not None:
-        pattern = re.findall('<p>INCORRECT.*?:.*CORRECT.*?:.*?.</p>',
+        #print(check_title_and_get_suggestion)
+        pattern = re.findall('<p>INCORRECT.*?:.*.?CORRECT.*?:.*?.</p>',
                              c,
                              re.DOTALL)
 
         if len(pattern):
+            label = label_error_type(c)
             for p in pattern:
                 sub_pattern = re.match('<p>INCORRECT.*?:(.*?)CORRECT.*?:(.*?)</p>', p, re.DOTALL)
                 clean = re.compile('<.*?>|\n+')
@@ -91,7 +131,9 @@ def match_pattern4(url,c, w):
                         {'Url' : url,
                          'Incorrect': re.sub(clean, '', sub_pattern.group(1)),
                          'Correct': re.sub(clean, '', sub_pattern.group(2)),
-                         'Suggestion': re.sub(clean, '', check_title_and_get_suggestion)
+                         'Suggestion': re.sub(clean, '', check_title_and_get_suggestion),
+                         'Label' : label,
+                         'Matched Pattern' : 'pattern 4'
                         })
         return True
 
@@ -107,6 +149,7 @@ def match_pattern5(url, c, w):
                              re.DOTALL)
 
         if len(pattern):
+            label = label_error_type(c)
             for p in pattern:
                 sub_pattern = re.match('<p><strong>Incorrect.*?:.*?</strong>(.*?)<strong>Correct.*:.*?</strong>(.*?)</p>',
                                        p,
@@ -118,7 +161,10 @@ def match_pattern5(url, c, w):
                         {'Url' : url,
                          'Incorrect': re.sub(clean, '', sub_pattern.group(1)),
                          'Correct': re.sub(clean, '', sub_pattern.group(2)),
-                         'Suggestion': re.sub(clean, '', check_title_and_get_suggestion)})
+                         'Suggestion': re.sub(clean, '', check_title_and_get_suggestion),
+                         'Label' : label,
+                         'Matched Pattern' : 'pattern 5'
+                         })
             return True
 
     return False
@@ -132,6 +178,7 @@ def match_pattern6(url, c, w):
     pattern2 = re.findall('<p>\d.*?<strong>[a-z]\).*?</strong></p>.*?<p>.*?</p>', c, re.DOTALL|re.IGNORECASE|re.MULTILINE)
 
     if len(pattern1) and len(pattern2):
+        label = label_error_type(c)
         for p1,p2 in zip(pattern1,pattern2):
             sub_pattern1 = re.match('<p><strong>\d.*?</strong>.*?[a]\)(.*?)[b]\)(.*?)</p>',
                                    p1, re.DOTALL|re.IGNORECASE|re.MULTILINE)
@@ -149,12 +196,17 @@ def match_pattern6(url, c, w):
                 {'Url' : url ,
                  'Incorrect': re.sub(clean, '', incorrect),
                  'Correct': re.sub(clean, '', sub_pattern2.group(1)),
-                 'Suggestion': re.sub(clean, '', sub_pattern2.group(2))})
+                 'Suggestion': re.sub(clean, '', sub_pattern2.group(2)),
+                 'Label' : label,
+                 'Matched Pattern' : 'pattern 6'
+                 })
         return True
 
     return False
 
-
+# match_pattern : <p>.*?<strong>[0-9].*?</strong><br>.*?:(.*?)</p>
+#  https://www.dailywritingtips.com/5-ways-to-fix-the-comma-splice/
+# 7-tips-for-using-suspensive-hyphenation
 def main(path_to_file_dir):
     # get files from the directory to match the pattern
     if os.path.exists(path_to_file_dir):
@@ -236,6 +288,8 @@ def main(path_to_file_dir):
 
     else:
         print('Path does not exist. Please correct the path.')
+
+    print('done')
 
 
 if __name__ == "__main__":
