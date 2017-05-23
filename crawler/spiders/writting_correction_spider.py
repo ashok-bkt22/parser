@@ -3,7 +3,7 @@
 # Scrapy library is used because it is fast, asynchronous and can crawl thousands of websites efficiently
 # https://doc.scrapy.org/en/latest/intro/install.html
 import scrapy
-import os
+
 
 
 class WrittingTipSpider(scrapy.Spider):
@@ -19,7 +19,7 @@ class WrittingTipSpider(scrapy.Spider):
     def parse(self, response):
         links = response.css('div.post ul.postspermonth li a::attr(href)').extract()
         for l in links:
-            if l is not None and l != "http://www.dailywritingtips.com/the-word-of-the-year-for-2016/":
+            if l is not None and l != "http://www.dailywritingtips.com/its-or-its/":
                 l = response.urljoin(l)
                 yield scrapy.Request(l, callback=self.save_article)
 
