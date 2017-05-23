@@ -19,12 +19,9 @@ class WrittingTipSpider(scrapy.Spider):
     def parse(self, response):
         links = response.css('div.post ul.postspermonth li a::attr(href)').extract()
         for l in links:
-            if l is not None and l != "http://www.dailywritingtips.com/its-or-its/":
-                l = response.urljoin(l)
+                response.urljoin(l)
                 yield scrapy.Request(l, callback=self.save_article)
 
-            else:
-                break
 
     def save_article(self, response):
         page = response.url.split("/")[-2]
